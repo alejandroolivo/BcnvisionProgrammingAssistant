@@ -1,0 +1,97 @@
+Hola, quiero que te comportes como un asistente de programación experto en C# .NET para ayudarme a crear código. Eres un experto en WPF, sabes crear controles y escribir html
+
+Bien, ahora quiero hacer te la siguiente pregunta, y quiero que me respondas con un ejemplo de código en C# y una breve explicación.
+
+Limita tu respuesta a 500 caracteres. 
+
+Pregunta: Cómo creo un StackPanel con un textbox y un boton en horizontal?
+
+Respuesta:
+
+<StackPanel Orientation="Horizontal">
+                <TextBox Text="Text"/>
+                <Button Content="Button1" />
+
+            </StackPanel>
+
+Pregunta: Cómo creo un grid con dos textbox, uno en cada mitad del grid?
+
+Respuesta:
+
+<Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="txtInput1" Text="Text1" Grid.Column="0"/>
+            <TextBox x:Name="txtInput2" Text="Text2" Grid.Column="1"/>
+        
+    </Grid>
+
+Pregunta: Cómo creas un botón en un stack panel en un grid de 4 filas?
+
+Respuesta: 
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="1*"/>
+
+<ColumnDefinition Width="1*"/>
+
+<ColumnDefinition Width="1*"/>
+
+<ColumnDefinition Width="1*"/>
+
+</Grid.ColumnDefinitions>
+
+<StackPanel Orientation="Horizontal">
+
+<Button Content="Button1" />
+
+</StackPanel>
+
+</Grid>
+
+Pregunta: Cómo creas 3 botones en un grid que se llamen Boton1, Boton2... ?
+
+Respuesta: 
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="1*"/>
+
+<ColumnDefinition Width="1*"/>
+
+<ColumnDefinition Width="1*"/>
+
+</Grid.ColumnDefinitions>
+
+<Button Content="Boton1" Grid.Column="0" />
+
+<Button Content="Boton2" Grid.Column="1"/>
+
+<Button Content="Boton3" Grid.Column="2"/>
+
+</Grid>
+
+Pregunta: Cómo creas un stack panel en vertical que contiene dos text box y dos botones que se llaman Enter y Delete?
+
+Respuesta: 
+
+<StackPanel Orientation="Vertical">
+
+<TextBox x:Name="txtInput1" Text="Text1" />
+
+<TextBox x:Name="txtInput2" Text="Text2" />
+
+<Button Content="Enter" />
+
+<Button Content="Delete" />
+
+</StackPanel>
+
+Pregunta: 

@@ -1,0 +1,2322 @@
+Hola, quiero que te comportes como un asistente de programación experto en .NET para ayudarme a crear código a partir de unos
+ejemplos que te voy a enseñar ahora. Tengo un programa que realiza varias funciones. Estas funciones son: instanciar un objeto 
+"Vidi" gracias a una librería de bcnvision, usar dicho objeto para extraer unos resultados y analizarlos, pintar gráficos en imágenes,
+deserializar y serializar imágenes y resultados de una ruta, gestionar rutas de la aplicación, transformar resultados para enviarlos por
+Udp, enviar VisionProInputs por Udp, escribir mensajes en un log, entre otras...
+A continuación te enseño algunos fragmentos de código que debes usar como ejemplo para generar más código similar que te pida después.
+Los fragmentos forman parte de un programa que tiene 3 métodos principales: el método Evaluate realiza una evaluación de resultados e imágenes,
+el método OnLoadRecipe instancia el Vidi entre otras cosas, y el método OnValueChange recibe mensajes en forma de string que contiene un nombre
+y un valor de un objeto o variable. ¿Has entendido hasta aquí?
+
+A continuación, te muestro los ejemplos de fragmentos:
+Fragmento 1:
+ /// <summary>
+        /// Metodo para la evaluacion de los resultados
+        /// </summary>
+        /// <param name="Index">Indice del sistema de vision</param>
+        ///<param name="ResultPath">Contenedor de resultados e imagenes. Si el dispositivo es un dataman envia la lectura como ResultPath</param>
+        /// <returns>Si devuelve true enviara notificacion para actualizar el hmi con el FinalResult</returns>
+        public override Task Evaluate(int Index, string ResultPath)
+        {
+            return Task.Run(() =>
+            {
+
+                BcnResultContainer resultContainer;
+
+                try
+                {
+
+                    //Deserializamos resultados
+                    resultContainer = BcnResultContainer.Deserialize(ResultPath);
+                    BcnImageContainer imageContainer = BcnImageContainer.Deserialize(ResultPath);
+
+                    //Extraemos  la imagen
+                    BcnRawImage OutputImage = imageContainer.Images[0];
+
+                    bool ganchoGraphic;
+
+                    if (modoTrabajo == MODO_TRABAJO.SAVE_IMAGES || modoTrabajo == MODO_TRABAJO.BOTH)
+                    {
+
+                        //Tag para pintar el nº de gancho
+                        ganchoGraphic = false;
+                        int offsetGraphicOK = 0;
+
+                        if (modeloSeleccionado != null && modeloSeleccionado != "")
+                        {
+                            //Componemos la ruta de guardado
+                            string imageSavePath = @"D:\bcnvision\Maxion\Llantas\Default\Images\" + modeloSeleccionado +
+                                                    @"\" + DateTime.Now.ToString("yyyyMMdd_HH-mm_") + "GANCHO" + NumGancho.ToString();
+
+                            //Creamos el directorio si no existe
+                            if (!Directory.Exists(imageSavePath)) Directory.CreateDirectory(imageSavePath);
+
+                            //Nombre completo de imagen a guardar
+                            string imageCombinedPath = imageSavePath + @"\CAM" + (Index + 1).ToString() + "_" +
+                                                    DateTime.Now.ToString("yyyy-M-dd_HHmmss_") + DateTime.Now.Millisecond.ToString("000") + ".bmp";
+
+                            //Prueba 
+                            //using(StreamWriter sw = File.CreateText(imageSavePath + @"\Text.txt"))
+                            //{
+                            //    sw.WriteLine("Hello");
+                            //}
+
+
+                            //Guardamos la imagen
+                            Bitmap bmp = new Bitmap(OutputImage.Width, OutputImage.Height);
+                            bmp = OutputImage.ToBitmap();
+                                                        
+                            bmp.Save(imageCombinedPath, System.Drawing.Imaging.ImageFormat.Bmp);
+
+                            //Compruebo las imagenes guardadas
+                            if (File.Exists(imageCombinedPath))
+                            {
+                                if (Index == 0) logger.Info("Imagenes guardadas.");
+                                //bmp.Dispose();
+                            }
+
+                            ganchoGraphic = true;
+
+                            if (ganchoGraphic && !(modoTrabajo == MODO_TRABAJO.BOTH))
+                            {
+                                ganchoGraphic = false;
+
+                                offsetGraphicOK = offsetGraphicOK + 100;
+
+                                OutputImage = Vidi.DrawText(OutputImage, "Gancho: " + NumGancho.ToString("00"), new GraphicSettings(Color.Yellow, 5, 100, offsetGraphicOK, 3, true));
+                            }
+                        }
+
+
+                    }
+                    if (modoTrabajo == MODO_TRABAJO.EXECUTE_VIDI || modoTrabajo == MODO_TRABAJO.BOTH)
+                    {
+
+                        //Ejecutamos el Vidi
+                        BcnVidiResults VidiResults = Vidi.RunStream(ResultPath, CurrentWorkspaces[Index], "default", 5000, true);
+
+                        //Pintamos las imagenes
+                        bool resultado = true;
+
+                        //Comprobamos que se haya generado algun resultado, esto indica que no hay errores con el servidor de deep learning
+                        if (VidiResults != null)
+                        {
+                            //Comprobamos que se nos haya devuelto resultado
+                            if (VidiResults.Results.Count > 0)
+                            {
+                                ganchoGraphic = true;
+                                int offsetGraphsNOK = 0;
+
+                                //Recorremos los resultados
+                                for (int i = 0; i < VidiResults.Results.Count; i++)
+
+                                {
+                                    //Miramos que la herramienta no contenga "Loc"
+                                    if (!VidiResults.Results[i].ToolName.ToString().Contains("Loc"))
+                                    //if (VidiResults.Results[i].Type.ToString() == "Red")
+                                    {
+                                        if (VidiResults.Results[i].BcnVidiFeatures.Count > 0)
+                                        {
+                                            resultado = false;
+                                            //Pintamos los graficos
+                                            OutputImage = Vidi.DrawGraphics(OutputImage, VidiResults.Results[i], new GraphicSettings(Color.Red, 1, 0, 0, 3));
+
+                                            offsetGraphsNOK = offsetGraphsNOK + 100;
+
+                                            OutputImage = Vidi.DrawText(OutputImage, VidiResults.Results[i].ToolName, new GraphicSettings(Color.Red, 5, 100, offsetGraphsNOK, 3, true));
+                                        }
+                                        
+                                    }
+
+                                    if (ganchoGraphic)
+                                    {
+                                        ganchoGraphic = false;
+
+                                        offsetGraphsNOK = offsetGraphsNOK + 100;
+
+                                        OutputImage = Vidi.DrawText(OutputImage, "Gancho: " + NumGancho.ToString("00"), new GraphicSettings(Color.Yellow, 5, 100, offsetGraphsNOK, 3, true));
+                                    }
+                                }
+
+                                //SE EVALUA EL VALOR ACUMULADO
+
+                                resultContainer.ToolResultConstant = (resultado) ? BcnResultConstants.Accept : BcnResultConstants.Reject;
+
+                            }
+
+                        }
+                        else
+                        {
+                            resultContainer.ToolResultConstant = BcnResultConstants.Reject;
+                        }
+
+                    }
+
+                        //Serializamos el resultado
+                        //BcnResultContainer resultContainer = new BcnResultContainer(0, DateTime.Now, result, null, null, null, null);
+                        BcnResultContainer.Serialize(ResultPath, resultContainer);
+
+                        //Guardamos la imagen con graficos
+                        imageContainer.ImageWithGraphics = OutputImage;
+                        BcnImageContainer.Serialize(ResultPath, imageContainer);
+
+                }
+                catch (Exception ex)
+                {
+                    // BcnResultContainer resultContainer = new BcnResultContainer(0, DateTime.Now, result, null, null, null, null);
+                    //BcnResultContainer.Serialize(ResultPath, resultContainer);
+                    logger.Error(ex);
+                }
+            });
+        }
+Fragmento 2:
+/// <summary>
+        /// Metodo para cargar la receteca para el analisis general de resultado
+        /// </summary>
+        /// <param name="RecipeLoaded"></param>
+        public override Task OnLoadRecipe(string RecipeLoaded)
+        {
+            return Task.Run(async() =>
+            {
+                try
+                {
+                    //Gestion de modelos
+                    infoAplicacion = new AppLlantasInfo();
+                    infoAplicacion.modelsContent = new AppLlantasInfo.ModelosInfo();
+
+                    //Cargamos modelos y defectos
+                    infoAplicacion.LoadAppInfo();
+
+                    listaModelos = new List<string>();
+                    listaModelos = infoAplicacion.modelsContent.Modelos;
+                    MainView.updateModelos(listaModelos);
+
+                    infoAplicacion.SaveAppInfo();
+
+                    //Inicializacion del Vidi
+                    if(Vidi == null)
+                    {
+                        //Iniciamos Vidi
+                        Vidi = new BcnVidi();
+
+                        //Inicializamos list de wrksps segun número de vision systems
+                        CurrentWorkspaces = new string[BcnConfigFile.Configuration.VisionSystems.Count];
+
+                    }
+
+                    //Ruta de los workspaces
+                    string FolderPath = Path.Combine(FolderManager.ProgsFolder, RecipeLoaded);
+
+                    //Info del directorio
+                    DirectoryInfo dirInfo = new DirectoryInfo(FolderPath);
+
+                    //Obtenemos los archivos con extension .vrws
+                    FileInfo[] Files = dirInfo.GetFiles("*.vrws");
+
+                    //recorremos todos los archivos
+                    for (int i = 0; i < CurrentWorkspaces.Length; i++)
+                    {
+                        //Descaramos el workspace previo si existiera
+                        //await Vidi.UnLoadWorkSpace(Files[i].FullName);
+
+                        //Cargamos el nuevo workspace
+                        await Vidi.LoadWorkspace(Path.Combine(FolderManager.ProgsFolder, RecipeLoaded, Files[i].FullName));
+
+                        //Guardamos el nombre
+                        CurrentWorkspaces[i] = Path.GetFileNameWithoutExtension(Files[i].FullName);
+
+                        //Si tenenos imagen de inicio en la carpeta recioes lanzamos una ejecucion para que se inicie vidi
+                        string startImagePath = Files[i].FullName.Replace("vrws", "bmp").Replace("Progs", "Recipes");
+                        if (File.Exists(startImagePath))
+                        {
+                            BcnVidiResults VidiResults = Vidi.RunStream(startImagePath, CurrentWorkspaces[i], "default", 5000, true);
+                        }
+                    }
+
+
+
+                }
+                catch (Exception ex)
+                {
+
+                    logger.Error(ex);
+
+                }
+            });
+        }
+Fragmento 3:
+/// <summary>
+        /// Evento nuevo mensaje por udp
+        /// </summary>
+        /// <param name="Tag">Nombre de la tag</param>
+        /// <param name="Value">Valor</param>
+        public override void Coms_OnValueChanged(string Tag, string Value)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    //Separamos el mensaje por interrogantes
+                    string[] splitValue = Value.Split('?');
+
+                    //Seleccion de la tag
+                    switch (Tag)
+                    {
+                        case "GANCHO":
+
+                            logger.Info(Value);
+
+                            break;
+                        default:
+
+                            if (Tag.Contains("GANCHO"))
+                            {
+                                System.Threading.Thread.Sleep(500);
+                                NumGancho = Convert.ToInt32(Value.Replace(" ", ""));
+                                MainView.updateNumGancho(NumGancho);
+                                logger.Info("Número de gancho: " + Value.Replace(" ",""));
+                            }
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex);
+                }
+            });
+        }
+Fragmento 4:
+
+        /// <summary>
+        /// Clase que define los modelos de la app
+        /// </summary>
+        public class AppLlantasInfo
+        {
+
+            #region Fields
+            private string xmlPathModels = @"D:\bcnvision\Maxion\Llantas\Default\Config\ModelsInfo.xml";
+            #endregion
+
+            #region Properties
+            /// <summary>
+            /// Modelos
+            /// </summary>
+            public ModelosInfo modelsContent { get; set; }
+
+            #endregion
+
+            #region Public Methods
+
+            /// <summary>
+            /// Metodo para cargar la info de la app
+            /// </summary>
+            /// <param name="XmlPath">Archivo xml</param>
+            /// <returns></returns>
+            public async void LoadAppInfo()
+            {
+                //xmlPath = Path.Combine("",XmlPath);
+                //xmlPath = xmlPath.Replace(@"\\", @"\");
+
+                //Creamos el file stream
+
+                if (File.Exists(xmlPathModels))
+                {
+                    var fs = new System.IO.FileStream(xmlPathModels, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+                    XmlSerializer xs = new XmlSerializer(typeof(ModelosInfo));
+
+                    using (StreamReader sr = new StreamReader(fs))
+                    {
+                        //Var para indicar si hay error de lectura
+                        bool IsReadError = true;
+
+                        //Hacemos varios intentos de leer el archivo, alguna vez da error si el archivo esta abierto por diferentes procesos
+                        for (int i = 0; i < 3; i++)
+                        {
+                            try
+                            {
+                                //Deserealizo
+                                modelsContent = (ModelosInfo)xs.Deserialize(sr);
+
+                                IsReadError = false;
+
+                                break;
+                            }
+                            catch (Exception)
+                            {
+                                await Task.Delay(1000);
+                            }
+                        }
+
+                        if (IsReadError) throw new Exception("Error on load models info =>" + xmlPathModels);
+                    }
+                }
+
+            }
+
+            /// <summary>
+            /// Metodo para guardar la info
+            /// </summary>
+            /// <returns></returns>
+            public void SaveAppInfo()
+            {
+                XmlSerializer xs = new XmlSerializer(typeof(ModelosInfo));
+                using (StreamWriter sw = new StreamWriter(xmlPathModels))
+                {
+                    try
+                    {
+                        //setParams();
+                        xs.Serialize(sw, modelsContent);
+                    }
+                    catch (Exception)
+                    {
+                        throw;
+                    }
+                }
+            }
+            #endregion
+
+            [Serializable]
+            public class ModelosInfo
+            {
+                #region Properties
+                /// <summary>
+                /// Indica si guardamos el Texture
+                /// </summary>
+                public List<string> Modelos { get; set; }
+                #endregion
+
+                #region Constructor
+                /// <summary>
+                /// Constructor
+                /// </summary>
+                public ModelosInfo(List<string> val)
+                {
+                    Modelos = new List<string>();
+                    Modelos = val;
+                }
+
+                public ModelosInfo()
+                {
+
+                }
+                #endregion
+            }
+
+        }
+
+        enum MODO_TRABAJO
+        {
+            SAVE_IMAGES = 0,
+            EXECUTE_VIDI = 1,
+            BOTH = 2
+        }
+Fragmento 5:
+#region Constants
+        private const int OKCODE = 11;
+        private const int DelaySignal = 75;
+        private const bool debugWithoutVidi = false;
+        #endregion
+
+        #region Enumeradores    
+        /// <summary>
+        /// Enum que define la cantidad de NParallelWorkspaces por vision system PC1
+        /// </summary>
+        enum NParallelWorkspacesCams
+        {
+            CAM1 = 1,
+            CAM2 = 5,
+            CAM3 = 5,
+            CAM4 = 1,
+            CAM5 = 0
+        }
+        #endregion
+
+        #region Properties
+        /// <summary>
+        /// Vista de la clase
+        /// </summary>
+        public MainWindow MainView { get; set; } = new MainWindow();
+        #endregion
+
+        #region Fields
+        //Lista de resultados por VS
+        private List <Result> results = new List<Result>();
+
+        /// <summary>
+        /// Array para determinar el numero de fotos esperado para cada visión sistem.
+        /// </summary>     
+        private int[] NFotos = new int[5];
+
+        //Numero de WS del sistema
+        private int[] NParallelWorkspaces = new int[] { 1, 1, 1, 1, 1 };
+
+        private bool AutoMode = true;
+
+        /// <summary>
+        /// Cliente vidi
+        /// </summary>
+        private BcnVidi Vidi;
+
+        /// <summary>
+        /// Array para guardar los workspaces actuales
+        /// </summary>
+        private List<string> CurrentWorkspaces;
+
+        object lockObj = new object();
+        #endregion
+
+        #region Constructor
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="Udp">Dispostivo de comunicacion</param>
+        public AdvancedScript()
+        {
+            try
+            {
+                if (Vidi == null)
+                {
+                    //Iniciamos vidi
+                    Vidi = new BcnVidi();
+
+                    //Iniciamos la lista de workspaces segun
+                    CurrentWorkspaces = new List<string>();
+
+                }
+
+                //InitVisionSystems("01 - Baixa");
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+            }
+        }
+
+        /// <summary>
+        /// Init VisionSytems. Configuration of VisionSystem.
+        /// </summary>
+        private void InitVisionSystems(string recipeName)
+        {
+            try
+            {
+                results.Clear();
+
+                //Inciamos por defecto:
+                //Cam1
+                NFotos[0] = 1;
+                //Cam2
+                NFotos[1] = 9;
+                //Cam3
+                NFotos[2] = 9;
+                //Cam4
+                NFotos[3] = 3;
+                //Cam5
+                NFotos[4] = 1;
+
+                //Cargamos las recetas de todos los vision systems para cargar el numero de fotos configuradas
+                for (int i = 0; i < BcnConfigFile.Configuration.VisionSystems.Count; i++)
+                {        
+                    results.Add(new Result(BcnConfigFile.Configuration.VisionSystems[i].Name.Replace(" ", ""), NFotos[i], BcnConfigFile.Configuration.VisionSystems[i].OtherSettings.DisableVisionPro));
+                }
+
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Metodo para liberar recursos antes de cerrar
+        /// </summary>
+        public override void Disposing()
+        {
+
+        }
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Metodo para la evaluacion de los resultados
+        /// </summary>
+        /// <param name="Index">Indice del sistema de vision</param>
+        ///<param name="ResultPath">Contenedor de resultados e imagenes. Si el dispositivo es un dataman envia la lectura como ResultPath</param>
+        /// <returns>Si devuelve true enviara notificacion para actualizar el hmi con el FinalResult</returns>
+        public override Task Evaluate(int Index, string ResultPath)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    //Deserializamos el resultado
+                    BcnResultContainer resultContainer = BcnResultContainer.Deserialize(ResultPath);
+
+                    //Deserializamos la imagen
+                    BcnImageContainer imageContainer = BcnImageContainer.Deserialize(ResultPath);
+
+                    //Imagen para añadir los graficos
+                    BcnRawImage OutputImage = null;
+                    string rangeImagePath = null;
+
+                    ICogImage testIC = null;
+
+                    if (results[Index].Name == "Cam1" || results[Index].Name == "Cam4")
+                    {
+                        rangeImagePath = resultContainer.ToolBlockOutputs[resultContainer.ToolBlockOutputs.FindIndex(x => x.Name == "PathImage")].Value.ToString();
+                        Bitmap bitmap = (Bitmap)Image.FromFile(rangeImagePath);
+
+                        testIC = (ICogImage)CogSerializer.LoadObjectFromFile(rangeImagePath);
+
+                        //Cargar imágenes para gráficos
+                        OutputImage = new BcnRawImage(bitmap, BcnRawImage.BcnRawImageFormat.Gray);
+                        
+                        //TODO Editar con TaskRun
+                        DeleteFFiles(6);
+                    }
+                    else if(results[Index].Name == "Cam2" || results[Index].Name == "Cam3")
+                    {
+                        OutputImage = imageContainer.Images[0];
+                    }
+                    
+                    //Set inicial del result
+                    BcnResultConstants result = BcnResultConstants.Accept;
+
+                    //Guardmos el tick del inico de proceso
+                    long StartProcessTick = Stopwatch.GetTimestamp();
+                    
+                    //Se envia la inspeccion completada
+                    Udp.Write("InspeccionCompletada_Cam" + (Index + 1).ToString(), "0");
+
+                    string wrksp = "";
+                    BcnVidiResults VidiResults;
+
+                    //EJECUTAR
+                    //VIDI
+                    if (results[Index].Mode == Result.ProcessingMode.Vidi)
+                    {
+
+                        wrksp = CurrentWorkspaces[CurrentWorkspaces.IndexOf(BcnConfigFile.Configuration.VisionSystems[Index].Name)];
+
+                        //Lanzamos la ejecucion de vidi
+                        VidiResults = Vidi.RunStream(ResultPath, wrksp, "default", 1500, true);
+
+                        //Variable para contar la cantidad de defectos, determinara si el resultado de la inspeccion es ok o nok
+                        int DefectCounter = 0;
+
+                        ManageVidiResults(VidiResults, Index, ref DefectCounter, ref OutputImage);
+
+                        //Resultado final
+                        result = (DefectCounter == 0) ? BcnResultConstants.Accept : BcnResultConstants.Reject;
+
+                    }
+                    //Con VisionPro
+                    else
+                    {
+                        if (results[Index].Name == "Cam5")
+                        {
+                            result = resultContainer.ToolResultConstant;
+                        }
+                        else //CAM 1 i 4
+                        {
+                            //Para cam diferente de 4 es el mismo Workspace
+                            wrksp = (results[Index].Name == "Cam1") ? CurrentWorkspaces[CurrentWorkspaces.IndexOf(BcnConfigFile.Configuration.VisionSystems[Index].Name)] : CurrentWorkspaces[CurrentWorkspaces.IndexOf("Cam4" + "foto" + (results[Index].Total + 1).ToString())];
+
+                            //Lanzamos la ejecucion de vidi
+                            VidiResults = Vidi.RunStream(testIC, wrksp, "default", 1500, true);
+
+                            int DefectCounter = 0;
+
+                            ManageVidiResults(VidiResults, Index, ref DefectCounter, ref OutputImage);
+
+                            //Resultado final
+                            result = (DefectCounter == 0) ? BcnResultConstants.Accept : BcnResultConstants.Reject;
+
+                        }
+                    }
+
+                    //Forzar resultados a OK - Test
+                    if (debugWithoutVidi)
+                    {
+                        if (Index == 0)
+                        {
+                            result = BcnResultConstants.Accept;
+                        }
+                        else if (Index == 1)
+                        {
+                            result = BcnResultConstants.Accept;
+                        }
+                        else if (Index == 2)
+                        {
+                            result = BcnResultConstants.Accept;
+                        }
+                        else if (Index == 3)
+                        {
+                            result = BcnResultConstants.Accept;
+                        }
+                        else if (Index == 4)
+                        {
+                            result = BcnResultConstants.Accept;
+
+                        }
+                    }
+
+                    //ALMACENAR ---- Se mira el resultado obtenido ya se VIDI o VPRO para
+                    if (result == BcnResultConstants.Accept && AutoMode) //1
+                    {
+                        results[Index].NokCodes[results[Index].Total] = true;
+                        results[Index].OK++;                       
+                        results[Index].GlobalResult.ResultColorBorder = BcnGlobalResult.BcnResultColorBorder.Green;
+                    }
+                    else if (result == BcnResultConstants.Reject && AutoMode)
+                    {
+                        //Si el resultado es NOOK activamos la imagen como NOK en el NOKCODE
+                        results[Index].NokCodes[results[Index].Total] = false;
+                        results[Index].NOK++;
+                        results[Index].GlobalResult.ResultColorBorder = BcnGlobalResult.BcnResultColorBorder.Red;
+                    }
+
+                    //RESULTADOS TOTALES Y ENVIO
+                    //Si hemos alcanzado todos los resultados esperados para la camara
+                    if (results[Index].Total == results[Index].NumberOfPictures)
+                    {
+                        //hacemos reset de los ACK
+                        results[Index].TriggersAck = 0;
+
+                        //Hacemos un set del resultado
+                        BcnResultConstants FinalResult = BcnResultConstants.Reject;
+
+                        //Si la pieza es OK
+                        if (results[Index].Total == results[Index].OK)
+                        {
+                            FinalResult = BcnResultConstants.Accept;
+                        }
+                        else // Si es NOK
+                        {
+                            FinalResult = BcnResultConstants.Reject;
+                        }
+                        if (AutoMode)
+                        {
+                            //Se envia los resultados al PLC
+                            SendResultsToPLC(Index, FinalResult);
+
+                            //Incrementamos los contadores
+                            if (FinalResult == BcnResultConstants.Accept) results[Index].GlobalResult.Ok++;
+                            else results[Index].GlobalResult.Nok++;
+
+                        }
+
+                        //Reseteamos el buffer de imagen del visionsystem
+                        Udp.Write("CycleReset_0" + Index.ToString(), "1");
+                        
+                    }
+
+                    //SERIALIZAR la imagen y los resultados
+                    SerializeImageAndResults(Index, ResultPath, imageContainer, OutputImage, StartProcessTick, result);
+                    if (results[Index].Name == "Cam1" || results[Index].Name == "Cam4")
+                    {
+                        //Guardar imagenes Surface para entrenamiento
+                        string imgSavePath = Path.Combine(Path.Combine(FolderManager.ImagesFolder, LastLoadedRecipe),
+                        BcnConfigFile.Configuration.VisionSystems[Index].Name + "_Vidi");
+
+                        if (!Directory.Exists(imgSavePath))
+                            Directory.CreateDirectory(imgSavePath);
+
+                        string imgP = Path.Combine(imgSavePath,"ImgSV_" + BcnData.SetDateString(DateTime.Now) + ".png");
+
+                        //OutputImage.ToBitmap().Save(imgSavePath);
+ 
+                        //Carpetas con num de imgs puesto por receta
+                        DeleteFolderAndFiles(Path.Combine(Path.Combine(FolderManager.ImagesFolder, LastLoadedRecipe),
+                            BcnConfigFile.Configuration.VisionSystems[Index].Name), Index);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex);
+                }
+            });
+        }
+
+        private void ManageVidiResults(BcnVidiResults VidiResults, int Index, ref int DefectCounter, ref BcnRawImage OutputImage)
+        {
+            try
+            {
+                if (VidiResults != null)
+                {
+                    //Comprobamos que se nos haya devuelto resultado
+                    if (VidiResults.Results.Count > 0)
+                    {
+                        //Recorremos los resultados
+                        for (int i = 0; i < VidiResults.Results.Count; i++)
+                        {
+                            //tenemos en cuenta los resultados de las herramientas excepto aquellas que calculan máscaras
+                            if (!VidiResults.Results[i].ToolName.Contains("Loc"))
+                            {
+                                //si el num de features (defectos) es mayor a 0
+                                if (VidiResults.Results[i].NToolFoundFeatures > 0)
+                                {
+                                    //Con el nombre de la herramienta encontramos el codigo del defecto
+                                    //string[] toolName = VidiResults.Results[i].ToolName.Split('_');
+                                    //int codiDefecte = Convert.ToInt16(toolName[0]);
+
+                                    //Acumulamos un defecto
+                                    //DefectCounter++;
+
+                                }
+
+                                //Pintamos los graficos                                    
+                                OutputImage = Vidi.DrawGraphics(OutputImage, VidiResults.Results[i], new GraphicSettings(Color.Red, 3, 0, 0, 3));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    //Acumulamos un defecto
+                    DefectCounter++;
+
+                    logger.Error("Vidi == null =>" + Index.ToString() + ", );
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Metodo para serializar la imagen y los resultados
+        /// </summary>
+        /// <param name="Index"></param>
+        /// <param name="ResultPath"></param>
+        /// <param name="imageContainer"></param>
+        /// <param name="OutputImage"></param>
+        /// <param name="StartProcessTick"></param>
+        /// <param name="result"></param>
+        private void SerializeImageAndResults(int Index, string ResultPath, BcnImageContainer imageContainer, BcnRawImage OutputImage, long StartProcessTick, BcnResultConstants result)
+        {
+            try
+            {
+
+                //Serializamos el resultado
+                BcnResultContainer resultContainer = new BcnResultContainer(imageContainer.ID, imageContainer.AcquisitionTime, StartProcessTick, Stopwatch.GetTimestamp(), result, null, null, null, null, null, null)
+                {
+                    GlobalResult = results[Index].GlobalResult
+                };
+                BcnResultContainer.Serialize(ResultPath, resultContainer);
+
+                //Guardamos la imagen con graficos
+                imageContainer.ImageWithGraphics = OutputImage;
+                BcnImageContainer.Serialize(ResultPath, imageContainer);
+            }
+            catch (Exception ex)
+            {
+
+                logger.Error(ex);
+
+            }
+        }
+
+        /// <summary>
+        /// Envia los resultados al PLC
+        /// </summary>
+        /// <param name="Index"></param>
+        /// <param name="ResultCode"></param>
+        private void SendResultsToPLC(int Index, BcnResultConstants resultPart)
+        {
+            try
+            {
+                logger.Info("Envio Result Cam " + (Index + 1).ToString() + ": " + resultPart.ToString());
+                //Comprobamos que sea la Cam4
+                if (BcnConfigFile.Configuration.VisionSystems[Index].Name == "Cam4")
+                {
+                    //Numero fotos de la cam4
+                    for (int i = 0; i < NFotos[3]; i++)
+                    {
+                        //Reseteamos los triggerAck de la camara4
+                        Udp.Write("TriggerAck_Cam4_Foto" + (i + 1).ToString(), "0");
+
+                        //Se envia el resultado de foto parcial
+                        Udp.Write("Resultat_Cam4_" + (i + 1).ToString(), (results[Index].NokCodes[i])? OKCODE.ToString() : results[Index].defectsConfiguration.Defects[Index].Code.ToString());
+                    }
+                }
+                else //Si no es cámara4
+                {
+                    //Se envia el resultado
+                    Udp.Write("Resultat_Cam" + (Index + 1).ToString(), (resultPart == BcnResultConstants.Accept) ? OKCODE.ToString() : results[Index].defectsConfiguration.Defects[Index].Code.ToString());
+                }
+                //Enviamos el inspectionComplete del visionSystem despues de enviar los resultados y el Busy
+                System.Threading.Thread.Sleep(DelaySignal);
+
+                //Se envia la inspeccion completada
+                Udp.Write("InspeccionCompletada_Cam" + (Index + 1).ToString(), "1");                
+
+                //Eliminamos todos los valores de la clase results
+                results[Index].ClearResult();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            
+        }
+        
+        /// <summary>
+        /// Mantener num de imgs max en carpetas
+        /// </summary>
+        /// <param name="imagePath"></param>
+        /// <param name="visionSystemIndex"></param>
+        private void DeleteFolderAndFiles(string imagePath, int visionSystemIndex)
+        {
+            //Info directorio imagenes
+            DirectoryInfo info = new DirectoryInfo(imagePath);
+
+            //Cargamos y ordenamos por orden de creacion los ficheros
+            FileInfo[] files = info.GetFiles().OrderBy(d => d.CreationTime).ToArray();
+
+            if (files.Count() > BcnConfigFile.Configuration.VisionSystems[visionSystemIndex].OtherSettings.SaveImageSettings.MaxImagesToSave)
+            {
+                //Miro cuantos ficheros hay que eliminar
+                int numberToDelete = files.Count() - BcnConfigFile.Configuration.VisionSystems[visionSystemIndex].OtherSettings.SaveImageSettings.MaxImagesToSave;
+                for (int i = 0; i < numberToDelete; i++)
+                {
+                    try
+                    {
+                        if (File.Exists(files[i].FullName)) File.Delete(files[i].FullName);
+                    }
+                    catch
+                    {
+
+                    }
+                }
+            }
+
+            #region directorios
+            //Cargamos y ordenamos por orden de creacion los directorios
+            /*DirectoryInfo[] directories = info.GetDirectories().OrderBy(d => d.CreationTime).ToArray();
+
+            if (directories.Count() > BcnConfigFile.Configuration.VisionSystems[visionSystemIndex].OtherSettings.SaveImageSettings.MaxImagesToSave)
+            {
+                //Miro cuantos ficheros hay que eliminar
+                int numberToDelete = directories.Count() - BcnConfigFile.Configuration.VisionSystems[visionSystemIndex].OtherSettings.SaveImageSettings.MaxImagesToSave;
+                for (int i = 0; i < numberToDelete; i++)
+                {
+                    try
+                    {
+                        if (Directory.Exists(directories[i].FullName)) Directory.Delete(directories[i].FullName, true);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }*/
+            #endregion
+        }
+        
+        /// <summary>
+        /// Vaciar la F poco a poco
+        /// </summary>
+        /// <param name="numImagenesMantener"></param>
+        private void DeleteFFiles(int numImagenesMantener)
+        {
+            //Info directorio imagenes
+            DirectoryInfo info = new DirectoryInfo(@"F:\");
+
+            //Cargamos y ordenamos por orden de creacion los ficheros
+            FileInfo[] files = info.GetFiles().OrderBy(d => d.CreationTime).ToArray();
+
+            if (files.Count() > numImagenesMantener)
+            {
+                //Miro cuantos ficheros hay que eliminar
+                int numberToDelete = files.Count() - numImagenesMantener;
+                for (int i = 0; i < numberToDelete; i++)
+                {
+                    try
+                    {
+                        if (File.Exists(files[i].FullName)) File.Delete(files[i].FullName);
+                    }
+                    catch
+                    {
+
+                    }
+                }
+            }
+
+            #region directorios
+            //Cargamos y ordenamos por orden de creacion los directorios
+            /*DirectoryInfo[] directories = info.GetDirectories().OrderBy(d => d.CreationTime).ToArray();
+
+            if (directories.Count() > BcnConfigFile.Configuration.VisionSystems[visionSystemIndex].OtherSettings.SaveImageSettings.MaxImagesToSave)
+            {
+                //Miro cuantos ficheros hay que eliminar
+                int numberToDelete = directories.Count() - BcnConfigFile.Configuration.VisionSystems[visionSystemIndex].OtherSettings.SaveImageSettings.MaxImagesToSave;
+                for (int i = 0; i < numberToDelete; i++)
+                {
+                    try
+                    {
+                        if (Directory.Exists(directories[i].FullName)) Directory.Delete(directories[i].FullName, true);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }*/
+            #endregion
+        }
+
+        /// <summary>
+        /// Metodo para cargar la receteca para el analisis general de resultado
+        /// </summary>
+        /// <param name="RecipeLoaded"></param>
+        public override Task OnLoadRecipe(string RecipeLoaded)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    //Serializamos los VS
+                    InitVisionSystems(RecipeLoaded);
+
+                    //Pruebas sin vidi
+                    if (!debugWithoutVidi)
+                    {                       
+
+                        //Ruta de los workspaces
+                        string FolderPath = Path.Combine(FolderManager.ProgsFolder, RecipeLoaded);
+
+                        //Info del directorio
+                        DirectoryInfo dirInfo = new DirectoryInfo(FolderPath);
+
+                        //obtenemos los archivos con extension workspace
+                        FileInfo[] Files = dirInfo.GetFiles("*.vrws");
+
+                        //VRWS extras: 2
+                        
+                        //Cargamos el WS solo en los visionSystems que trabajen con vidi
+                        for (int i = 0; i < BcnConfigFile.Configuration.VisionSystems.Count; i++)
+                        {
+                            //Miramos si hay wrvs
+                            string fileCorrect = "";
+
+                            //Cargamos las rutas de todos los workspaces separadas por |
+                            for (int j = 0; j < Files.Length; j++)
+                                    if(Files[j].FullName.Contains(BcnConfigFile.Configuration.VisionSystems[i].Name))
+                                        fileCorrect += Files[j].FullName + "|";
+
+                            if(fileCorrect != "")
+                            {
+                                //Separamos las rutas para cargar N workspaces por VS
+                                string[] fileCorrectSplit = fileCorrect.Split('|');
+
+                                for(int k = 0; k < fileCorrectSplit.Length - 1; k++)
+                                {
+                                    string newFile = fileCorrectSplit[k];
+                                    logger.Info("Loading: " + newFile);
+
+                                    //Cargamos el nuevo workspace y le indicamos el numero de iteraciones
+                                    await Vidi.LoadWorkspace(newFile, 120000, NParallelWorkspaces[i]);
+
+                                    //Guardamos el nombre, si lo teníamos ya lo quitamos
+                                    if (CurrentWorkspaces.Contains(Path.GetFileNameWithoutExtension(newFile)))
+                                        CurrentWorkspaces.Remove(Path.GetFileNameWithoutExtension(newFile));
+
+                                    CurrentWorkspaces.Add(Path.GetFileNameWithoutExtension(newFile));
+
+                                    logger.Info("Loaded: " + newFile);
+
+                                    //Si tenenos imagen de inicio en la carpeta recetas lanzamos una ejecucion para que se inicie vidi
+                                    string startImagePath = newFile.Replace("vrws", "bmp").Replace("Progs", "Recipes");
+
+                                    if (File.Exists(startImagePath))
+                                    {
+                                        //Ejecutamos todos los workspaces
+                                        for (int n = 0; n < NParallelWorkspaces[i]; n++)
+                                        {
+                                            BcnVidiResults VidiResults = Vidi.RunStream(startImagePath, CurrentWorkspaces[CurrentWorkspaces.IndexOf(BcnConfigFile.Configuration.VisionSystems[i].Name)], BcnConfigFile.Configuration.VisionSystems[i].Name != "Cam4" ? "default" : "foto1", 1000, true);
+                                        }
+
+                                    }
+                                }
+
+                                
+                            }
+                        }
+                    }
+
+                    //Comunicamos la receta recién cargada
+                    Udp.Write("CurrentRecipeIDCustom", Convert.ToInt32(RecipeLoaded.Substring(0, 2)).ToString("0"));
+                    
+                }
+                catch (Exception ex)
+                {
+
+                    logger.Error(ex);
+
+                }
+            });
+        }
+
+        public override void Notify(string Tag, string Value)
+        {
+            
+        }
+
+        #endregion
+
+        #region Events
+        /// <summary>
+        /// Evento nuevo mensaje por udp
+        /// </summary>
+        /// <param name="Tag">Nombre de la tag</param>
+        /// <param name="Value">Valor</param>
+        public override void Coms_OnValueChanged(string Tag, string Value)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    //Separamos el mensaje por interrogantes
+                    string[] splitValue = Value.Split('?');
+
+                    //System.Threading.Thread.Sleep(5000);
+                    
+                    //Si es la Cam4
+                    if(Tag.Contains("TriggerAck"))
+                        if (BcnConfigFile.Configuration.VisionSystems[Convert.ToInt16(Tag.Split('_')[1])].Name == "Cam4")
+                        {
+                            if (Value == "0" && AutoMode)
+                            {
+                                results[Convert.ToInt16(Tag.Split('_')[1])].TriggersAck++;
+
+                                //Se envia el triggerAck por foto de secuencia. Se hace +1 ya que se empieza desde 1 en el BcnCifx
+                                Udp.Write("TriggerAck_Cam4_Foto" + (results[Convert.ToInt16(Tag.Split('_')[1])].TriggersAck).ToString("0"), "1");
+                                
+                            }
+                        }
+
+                    if (Tag.Contains("Auto"))
+                    {
+                        if (Value == "1")
+                            AutoMode = true;
+                        else if (Value == "0")
+                            AutoMode = false;
+
+                        logger.Info("Auto mode: " + AutoMode.ToString());
+                    }
+
+
+
+
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Se resetean todas las señales de comunicación de resultados y busy
+        /// </summary>
+        /// <param name="tag"></param>
+        private void ResetTags(string tag)
+        {
+            try
+            {
+                //Creamos 64 bits a 0 para enviar al PLC como reset
+                string ResuCodeReset = string.Join("", Enumerable.Repeat(0, 64).ToArray());
+
+                //Obtenemos los primeros 32 --> 1 DW
+                long DW1 = Convert.ToInt32(ResuCodeReset.Substring(0, 32), 2);
+
+                //Obtenemos los segunos 32 --> 2 DW
+                long DW2 = Convert.ToInt32(ResuCodeReset.Substring(32, 32), 2);
+
+                //Se envia el NOK
+                Udp.Write("Code_" + results[Convert.ToInt16(tag.Split('_')[1])].Name + "_0", DW1.ToString());
+                Udp.Write("Code_" + results[Convert.ToInt16(tag.Split('_')[1])].Name + "_1", DW2.ToString());
+
+                //Se envia el resultado
+                Udp.Write("Result_" + results[Convert.ToInt16(tag.Split('_')[1])].Name, "0");
+
+                //Bajamos el inspectionComplete del visionSystem
+                Udp.Write("InspectionCompleted_" + results[Convert.ToInt16(tag.Split('_')[1])].Name, "0");
+
+                //Subimos el Busy de la camera
+                Udp.Write("CameraBusy_" + results[Convert.ToInt16(tag.Split('_')[1])].Name, "1");
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+        #endregion
+Fragmento 6:
+
+    public class AdvancedScript : BcnAdvancedScript
+    {
+
+        #region Const
+        private const int ErrorCode = -999999;
+
+        private const int LoadRecipeTimeOut = 20;
+        #endregion
+
+        #region Fields
+
+        CogRecordsDisplay[] VSCogRecord = new CogRecordsDisplay[3];
+
+        /// <summary>
+        /// Array con los dos TCP Servers
+        /// </summary>
+        private SimpleTcpServer[] TCPServer_2D = new SimpleTcpServer[2];
+
+        /// <summary>
+        /// Array con los dos TCP Servers
+        /// </summary>
+        private SimpleTcpServer[] TCPServer_3D = new SimpleTcpServer[1];
+
+        /// <summary>
+        /// Nube de puntos merged
+        /// </summary>
+        BcnPointCloud pntCld;
+
+        /// <summary>
+        /// Nombre de las 3 recetas cargadas
+        /// </summary>
+        string[] recipes = new string[3];
+
+        /// <summary>
+        /// Nombre de las 3 recetas cargadas
+        /// </summary>
+        string[] loadedRecipes = new string[3];
+
+        /// <summary>
+        /// Nombre de las 3 recetas cargadas
+        /// </summary>
+        string[] lastResults = new string[3];
+
+        /// <summary>
+        /// Nombre de las 3 recetas cargadas
+        /// </summary>
+        string[] lastResultsImgNames = new string[3];
+
+        /// <summary>
+        /// Objeto para bloquear la carga de una receta
+        /// </summary>
+        private object RecipeObject = new object();
+        
+        /// <summary>
+        /// Acks para la carga de programas
+        /// </summary>
+        bool[] WaitingRecipeAck = new bool[3];
+
+        /// <summary>
+        /// ruta de la carpeta de la F del mini 2D para la cam fija
+        /// </summary>
+        string rutaFFolderFija = "";
+
+        /// <summary>
+        /// ruta de la carpeta de la F del mini 2D para la cam robot
+        /// </summary>
+        string rutaFFolderRobot = "";
+
+        /// <summary>
+        /// ruta de la carpeta de la F del mini 2D para la cam fija
+        /// </summary>
+        string rutaInfoFolderFija = "";
+
+        /// <summary>
+        /// ruta de la carpeta de la F del mini 2D para la cam robot
+        /// </summary>
+        string rutaInfoFolderRobot = "";
+
+        /// <summary>
+        /// ruta de la carpeta de la F del mini 2D para la cam robot
+        /// </summary>
+        string rutaFFolderPhotoneo = "";
+
+        /// <summary>
+        /// ruta de la carpeta de la F del mini 2D para la cam fija
+        /// </summary>
+        string rutaInfoFolderPhotoneo = "";
+        #endregion
+
+        #region Properties
+        /// <summary>
+        /// Vista de la clase
+        /// </summary>
+        public MainWindow MainView { get; set; } = new MainWindow();
+
+        Timer timer;
+
+
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="Udp">Dispostivo de comunicacion</param>        
+        public AdvancedScript()
+        {
+            try
+            {
+
+                //Rutas de las carpetas F en los minis
+                rutaFFolderFija =  @"I:\CamFijaL1";
+                rutaFFolderRobot = @"I:\CamRobotL1";
+                rutaInfoFolderFija = @"J:\CamFijaL1";
+                rutaInfoFolderRobot = @"J:\CamRobotL1";
+                rutaFFolderPhotoneo = @"K:\PhotoneoL1";
+                rutaInfoFolderPhotoneo = @"L:\PhotoneoL1";
+
+                VSCogRecord[0] = new CogRecordsDisplay();
+                VSCogRecord[1] = new CogRecordsDisplay();
+                VSCogRecord[2] = new CogRecordsDisplay();
+
+                //Iniciamos los TCP Servers para las cámaras 2D
+                TCPServer_2D[0] = new SimpleTcpServer(); //Cam Fija L1
+                TCPServer_2D[1] = new SimpleTcpServer(); //Cam Robot L1
+
+                TCPServer_2D[0].Start(System.Net.IPAddress.Parse("192.168.101.5"), 2001);
+                TCPServer_2D[1].Start(System.Net.IPAddress.Parse("192.168.101.5"), 2002);
+
+                TCPServer_2D[0].DataReceived += Comunicaciones_Fija;
+                TCPServer_2D[1].DataReceived += Comunicaciones_Robot;
+
+                //Iniciamos los TCP Servers para el photoneo
+                TCPServer_3D[0] = new SimpleTcpServer(); //Photoneo L1
+                TCPServer_3D[0].Start(System.Net.IPAddress.Parse("192.168.102.5"), 2000);
+                TCPServer_3D[0].DataReceived += Comunicaciones_Photoneo;
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+
+                logger.Error(ex);
+
+            }
+        }
+
+        /// <summary>
+        /// Metodo para liberar recursos antes de cerrar
+        /// </summary>
+        public override void Disposing()
+        {
+
+        }
+        #endregion
+        
+        #region Communications
+        private void Comunicaciones_Fija(object sender, Message e)
+        {
+            try
+            {
+                Comunicaciones_Gestion(0, e);
+
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+            }
+        }
+
+        private void Comunicaciones_Robot(object sender, Message e)
+        {
+            try
+            {
+                Comunicaciones_Gestion(1, e);
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+            }
+        }
+
+        private void Comunicaciones_Photoneo(object sender, Message e)
+        {
+            try
+            {
+                Comunicaciones_Gestion(2, e);
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+            }
+
+        }
+
+        private void Comunicaciones_Gestion(int index, Message msg)
+        {
+            try
+            {
+                //Recibimos un mensaje nuevo de uno de los minis
+                logger.Fatal("Mensaje --> " + msg.MessageString);
+                string[] split = msg.MessageString.Split('|');
+
+                if (split[0].Contains("Ask")) //Hay que responder
+                {
+                    if (split[0].Contains("RecipeLoaded"))
+                    {
+                        string[] split2 = split[0].Split('_');
+
+                        //Respondemos con el nombre de la receta directamente
+                        msg.ReplyLine(recipes[Convert.ToInt32(split2[1].Substring(0, 2))]);
+                        logger.Fatal("Reply: " + recipes[Convert.ToInt32(split2[1].Substring(0, 2))]);
+
+                    }
+                    else if (split[0].Contains("LastResult"))
+                    {
+                        string[] split2 = split[0].Split('_');
+                        string msgRes = "LastResult_" + split2[1].Substring(0, 2) + "|" + lastResults[Convert.ToInt32(split2[1].Substring(0, 2))] + "|" + lastResultsImgNames[Convert.ToInt32(split2[1].Substring(0, 2))];
+
+                        msg.ReplyLine(msgRes);
+                        logger.Fatal("Reply: " + msgRes);
+
+                    }
+                }
+                else if (split[0].Contains("Retrain")) //Hay que responder
+                {
+
+                    string[] split2 = split[0].Split('_');
+
+                    //Respondemos con el nombre de la receta directamente
+                    msg.ReplyLine(recipes[Convert.ToInt32(split2[1].Substring(0, 2))]);
+
+                    if (index < 2) //Cams 2D
+                    {
+                        string folder = Convert.ToInt32(split2[1].Substring(0, 2)) == 0 ? rutaInfoFolderFija : rutaInfoFolderRobot;
+
+                        //Vamos a ver, reentrenamos y guardamos
+                        Parameters paramsTrain = XML_Management.ReadConfig(Path.Combine(folder, "RetrainInfo.xml"));
+
+                        //Pasamos posiciones
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXTrainPrincipal?" + (paramsTrain.CenterXTrainPrincipal != null ? paramsTrain.CenterXTrainPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYTrainPrincipal?" + (paramsTrain.CenterYTrainPrincipal != null ? paramsTrain.CenterYTrainPrincipal : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXTrainAuxiliar1?" + (paramsTrain.CenterXTrainAuxiliar1 != null ? paramsTrain.CenterXTrainAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYTrainAuxiliar1?" + (paramsTrain.CenterYTrainAuxiliar1 != null ? paramsTrain.CenterYTrainAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXTrainAuxiliar2?" + (paramsTrain.CenterXTrainAuxiliar2 != null ? paramsTrain.CenterXTrainAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYTrainAuxiliar2?" + (paramsTrain.CenterYTrainAuxiliar2 != null ? paramsTrain.CenterYTrainAuxiliar2 : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXSearchAuxiliar1?" + (paramsTrain.CenterXSearchAuxiliar1 != null ? paramsTrain.CenterXSearchAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYSearchAuxiliar1?" + (paramsTrain.CenterYSearchAuxiliar1 != null ? paramsTrain.CenterYSearchAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXSearchAuxiliar2?" + (paramsTrain.CenterXSearchAuxiliar2 != null ? paramsTrain.CenterXSearchAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYSearchAuxiliar2?" + (paramsTrain.CenterYSearchAuxiliar2 != null ? paramsTrain.CenterYSearchAuxiliar2 : "0.0") + "?Comment");
+
+                        //Pasamos longitud de lados
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthPrincipal?" + (paramsTrain.SideXLengthPrincipal != null ? paramsTrain.SideXLengthPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthPrincipal?" + (paramsTrain.SideYLengthPrincipal != null ? paramsTrain.SideYLengthPrincipal : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthTrainAuxiliar1?" + (paramsTrain.SideXLengthTrainAuxiliar1 != null ? paramsTrain.SideXLengthTrainAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthTrainAuxiliar1?" + (paramsTrain.SideYLengthTrainAuxiliar1 != null ? paramsTrain.SideYLengthTrainAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthSearchAuxiliar1?" + (paramsTrain.SideXLengthSearchAuxiliar1 != null ? paramsTrain.SideXLengthSearchAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthSearchAuxiliar1?" + (paramsTrain.SideYLengthSearchAuxiliar1 != null ? paramsTrain.SideYLengthSearchAuxiliar1 : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthTrainAuxiliar2?" + (paramsTrain.SideXLengthTrainAuxiliar2 != null ? paramsTrain.SideXLengthTrainAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthTrainAuxiliar2?" + (paramsTrain.SideYLengthTrainAuxiliar2 != null ? paramsTrain.SideYLengthTrainAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthSearchAuxiliar2?" + (paramsTrain.SideXLengthSearchAuxiliar2 != null ? paramsTrain.SideXLengthSearchAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthSearchAuxiliar2?" + (paramsTrain.SideYLengthSearchAuxiliar2 != null ? paramsTrain.SideYLengthSearchAuxiliar2 : "0.0") + "?Comment");
+
+                        //Pasamos Rotaciones y Skews
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationPrincipal?" + (paramsTrain.RotationPrincipal != null ? paramsTrain.RotationPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewPrincipal?" + (paramsTrain.SkewPrincipal != null ? paramsTrain.SkewPrincipal : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationTrainAuxiliar1?" + (paramsTrain.RotationTrainAuxiliar1 != null ? paramsTrain.RotationTrainAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewTrainAuxiliar1?" + (paramsTrain.SkewTrainAuxiliar1 != null ? paramsTrain.SkewTrainAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationSearchAuxiliar1?" + (paramsTrain.RotationSearchAuxiliar1 != null ? paramsTrain.RotationSearchAuxiliar1 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewSearchAuxiliar1?" + (paramsTrain.SkewSearchAuxiliar1 != null ? paramsTrain.SkewSearchAuxiliar1 : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationTrainAuxiliar2?" + (paramsTrain.RotationTrainAuxiliar2 != null ? paramsTrain.RotationTrainAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewTrainAuxiliar2?" + (paramsTrain.SkewTrainAuxiliar2 != null ? paramsTrain.SkewTrainAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationSearchAuxiliar2?" + (paramsTrain.RotationSearchAuxiliar2 != null ? paramsTrain.RotationSearchAuxiliar2 : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewSearchAuxiliar2?" + (paramsTrain.SkewSearchAuxiliar2 != null ? paramsTrain.SkewSearchAuxiliar2 : "0.0") + "?Comment");
+
+                        //Pasamos el que se reentrenará
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "TrainPatMaxPrincipal?" + paramsTrain.RetrainPrincipal + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "TrainPatMaxAuxiliar1?" + paramsTrain.RetrainAuxiliar1 + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "TrainPatMaxAuxiliar2?" + paramsTrain.RetrainAuxiliar2 + "?Comment");
+
+                        //Ejecutamos y guardamos
+                        System.Threading.Thread.Sleep(150);
+                        Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                        System.Threading.Thread.Sleep(150);
+                        Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+
+                    }
+                    else //Photoneo
+                    {
+                        string folder = rutaInfoFolderPhotoneo;
+
+                        //Vamos a ver, reentrenamos y guardamos
+                        Parameters3D paramsTrain = XML_Management3D.ReadConfig(Path.Combine(folder, "RetrainInfo.xml"));
+
+                        //Pasamos posiciones
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXTrainPrincipal?" + (paramsTrain.CenterXTrainPrincipal != null ? paramsTrain.CenterXTrainPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYTrainPrincipal?" + (paramsTrain.CenterYTrainPrincipal != null ? paramsTrain.CenterYTrainPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXSearchPrincipal?" + (paramsTrain.CenterXSearchPrincipal != null ? paramsTrain.CenterXSearchPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYSearchPrincipal?" + (paramsTrain.CenterYSearchPrincipal != null ? paramsTrain.CenterYSearchPrincipal : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXTrainSecundario?" + (paramsTrain.CenterXTrainSecundario != null ? paramsTrain.CenterXTrainSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYTrainSecundario?" + (paramsTrain.CenterYTrainSecundario != null ? paramsTrain.CenterYTrainSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterXSearchSecundario?" + (paramsTrain.CenterXSearchSecundario != null ? paramsTrain.CenterXSearchSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "CenterYSearchSecundario?" + (paramsTrain.CenterYSearchSecundario != null ? paramsTrain.CenterYSearchSecundario : "0.0") + "?Comment");
+
+
+                        //Pasamos longitud de lados
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthTrainPrincipal?" + (paramsTrain.SideXLengthTrainPrincipal != null ? paramsTrain.SideXLengthTrainPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthTrainPrincipal?" + (paramsTrain.SideYLengthTrainPrincipal != null ? paramsTrain.SideYLengthTrainPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthSearchPrincipal?" + (paramsTrain.SideXLengthSearchPrincipal != null ? paramsTrain.SideXLengthSearchPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthSearchPrincipal?" + (paramsTrain.SideYLengthSearchPrincipal != null ? paramsTrain.SideYLengthSearchPrincipal : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthTrainSecundario?" + (paramsTrain.SideXLengthTrainSecundario != null ? paramsTrain.SideXLengthTrainSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthTrainSecundario?" + (paramsTrain.SideYLengthTrainSecundario != null ? paramsTrain.SideYLengthTrainSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideXLengthSearchSecundario?" + (paramsTrain.SideXLengthSearchSecundario != null ? paramsTrain.SideXLengthSearchSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SideYLengthSearchSecundario?" + (paramsTrain.SideYLengthSearchSecundario != null ? paramsTrain.SideYLengthSearchSecundario : "0.0") + "?Comment");
+
+
+                        //Pasamos Rotaciones y Skews
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationTrainPrincipal?" + (paramsTrain.RotationTrainPrincipal != null ? paramsTrain.RotationTrainPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewTrainPrincipal?" + (paramsTrain.SkewTrainPrincipal != null ? paramsTrain.SkewTrainPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationSearchPrincipal?" + (paramsTrain.RotationSearchPrincipal != null ? paramsTrain.RotationSearchPrincipal : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewSearchPrincipal?" + (paramsTrain.SkewSearchPrincipal != null ? paramsTrain.SkewSearchPrincipal : "0.0") + "?Comment");
+
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationTrainSecundario?" + (paramsTrain.RotationTrainSecundario != null ? paramsTrain.RotationTrainSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewTrainSecundario?" + (paramsTrain.SkewTrainSecundario != null ? paramsTrain.SkewTrainSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "RotationSearchSecundario?" + (paramsTrain.RotationSearchSecundario != null ? paramsTrain.RotationSearchSecundario : "0.0") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "SkewSearchSecundario?" + (paramsTrain.SkewSearchSecundario != null ? paramsTrain.SkewSearchSecundario : "0.0") + "?Comment");
+
+
+                        //Pasamos el que se reentrenará
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "TrainPatMaxPrincipal?" + paramsTrain.RetrainPrincipal + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "TrainPatMaxSecundario?" + paramsTrain.RetrainSecundario + "?Comment");
+
+                        //Ejecutamos y guardamos
+                        System.Threading.Thread.Sleep(150);
+                        Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+
+                        System.Threading.Thread.Sleep(350);
+                        Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+
+
+
+                    }
+
+                }
+                else if (split[0].Contains("Trigger")) //Hay que responder
+                {
+
+                    if (split[0].Contains("00"))
+                    {
+
+                        Udp.Write("Trigger_00", "1");
+                        System.Threading.Thread.Sleep(50);
+                        Udp.Write("Trigger_00", "0");
+
+                    }
+                    else if (split[0].Contains("01"))
+                    {
+
+                        Udp.Write("Trigger_01", "1");
+                        System.Threading.Thread.Sleep(50);
+                        Udp.Write("Trigger_01", "0");
+
+                    }
+                    else if (split[0].Contains("02"))
+                    {
+
+                        Udp.Write("Trigger_02", "1");
+                        System.Threading.Thread.Sleep(50);
+                        Udp.Write("Trigger_02", "0");
+
+                    }
+
+
+                }
+                else if (split[0].Contains("AngleOffset")) //Hay que responder
+                {
+
+                    string[] split2 = split[0].Split('_');
+
+                    //Respondemos con el nombre de la receta directamente
+                    msg.ReplyLine(recipes[Convert.ToInt32(split2[1].Substring(0, 2))]);
+
+                    if (index < 2) //Cams 2D
+                    {
+
+                        //Pasamos el offset
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "AngleOffset?" + split[1].Replace("\u0013", "") + "?Comment");
+
+                        //Ejecutamos y guardamos
+                        Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                        System.Threading.Thread.Sleep(150);
+                        Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+
+                    }
+                    else //Photoneo
+                    {
+
+                    }
+
+                }
+                else if (split[0].Contains("Threshold")) //Hay que responder
+                {
+
+                    string[] split2 = split[0].Split('_');
+
+                    //Respondemos con el nombre de la receta directamente
+                    msg.ReplyLine(recipes[Convert.ToInt32(split2[1].Substring(0, 2))]);
+
+                    if (index < 2) //Cams 2D
+                    {
+                        string PMName = split[1] == "0" ? "Principal" : (split[1] == "1" ? "Auxiliar1" : "Auxiliar2");
+
+                        //Pasamos el offset
+                        logger.Info("VisionProInputs_" + index.ToString("00"), "Threshold" + PMName + "?" + split[2].Replace("\u0013", "") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "Threshold" + PMName + "?" + split[2].Replace("\u0013", "") + "?Comment");
+
+                        //Ejecutamos y guardamos
+                        Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                        System.Threading.Thread.Sleep(150);
+                        Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+
+                    }
+                    else //Photoneo
+                    {
+                        string PMName = split[1] == "0" ? "Principal" : "Secundario";
+
+                        //Pasamos el offset
+                        logger.Info("VisionProInputs_" + index.ToString("00"), "Threshold" + PMName + "?" + split[2].Replace("\u0013", "") + "?Comment");
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "Threshold" + PMName + "?" + split[2].Replace("\u0013", "") + "?Comment");
+
+                        //Ejecutamos y guardamos
+                        Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                        System.Threading.Thread.Sleep(150);
+                        Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+                    }
+
+                }
+                else if (split[0].Contains("EnablePatMax")) //Hay que responder
+                {
+
+                    if (index < 2) //Cams 2D
+                    {
+
+                        //Pasamos el offset
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "TogglePatMaxAuxiliar" + (split[1].Replace("\u0013", "") == "0" ? "1" : "2") + "?1?Comment");
+
+                        //Ejecutamos y guardamos
+                        Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                        System.Threading.Thread.Sleep(150);
+                        Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+
+                    }
+
+                }
+                else if (split[0].Contains("GirarMosaico")) //Parámetro Photoneo
+                {
+
+                    //Pasamos el valor
+                    Udp.Write("VisionProInputs_" + index.ToString("00"), "GirarMosaico?" + split[1].Replace("\u0013", "") + "?Comment");
+
+                    //Ejecutamos y guardamos
+                    Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                    System.Threading.Thread.Sleep(350);
+                    Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+                }
+                else if (split[0].Contains("AlturaBaseCesta")) //Parámetro Photoneo
+                {
+
+                    //Pasamos el valor
+                    Udp.Write("VisionProInputs_" + index.ToString("00"), "AlturaBaseCesta?" + split[1].Replace("\u0013", "") + "?Comment");
+
+                    //Ejecutamos y guardamos
+                    Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                    System.Threading.Thread.Sleep(350);
+                    Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+                }
+                else if (split[0].Contains("Banda")) //Parámetros de banda Photoneo
+                {
+                    if (split[0].Contains("IteracionesAnchoBanda"))
+                    {
+                        //Pasamos el valor
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "IteracionesAnchoBanda?" + split[1].Replace("\u0013", "") + "?Comment");
+                    }
+                    else if (split[0].Contains("BandaDecay"))
+                    {
+                        //Pasamos el valor
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "BandaDecay?" + split[1].Replace("\u0013", "") + "?Comment");
+                    }
+                    else
+                    {
+                        //Pasamos el valor
+                        Udp.Write("VisionProInputs_" + index.ToString("00"), "Banda?" + split[1].Replace("\u0013", "") + "?Comment");
+                    }
+
+                    //Ejecutamos y guardamos
+                    Udp.Write("RunVisionPro_" + index.ToString("00"), "1");
+                    System.Threading.Thread.Sleep(350);
+                    Udp.Write("SaveVisionPro_" + index.ToString("00"), "1");
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+            }
+        }
+        #endregion
+        
+        #region Methods
+
+        /// <summary>
+        /// Metodo para la evaluacion de los resultados
+        /// </summary>
+        /// <param name="Index">Indice del sistema de vision</param>
+        ///<param name="ResultPath">Contenedor de resultados e imagenes. Si el dispositivo es un dataman envia la lectura como ResultPath</param>
+        /// <returns>Si devuelve true enviara notificacion para actualizar el hmi con el FinalResult</returns>
+        public override Task Evaluate(int Index, string ResultPath)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    //Deserializamos  resultados
+                    BcnResultContainer resultContainer = BcnResultContainer.Deserialize(ResultPath);
+
+                    //Deserializamos la imagen
+                    BcnImageContainer imageContainer = BcnImageContainer.Deserialize(ResultPath);
+
+                    string TCPCommsImageName = "Img_" + DateTime.Now.ToString("mmdd_hhmmssfff") + ".bmp";
+
+                    //Photoneo 1
+                    if (Index == 2)
+                    {
+
+                        //Recogemos valores del vision pro
+                        int isEmpty = (short)((Convert.ToInt32(resultContainer.ToolBlockOutputs.Find(x => x.Name == "IsEmpty").Value)));
+                        int PMCount = (short)((Convert.ToInt32(resultContainer.ToolBlockOutputs.Find(x => x.Name == "PMCount").Value)));
+                        int PMCountAux = (short)((Convert.ToInt32(resultContainer.ToolBlockOutputs.Find(x => x.Name == "PMCountAux").Value)));
+                        int X_Pick = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name == "X_Pick").Value) * 1));
+                        int Y_Pick = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name == "Y_Pick").Value) * 1));
+                        int Z_Pick = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name == "Z_Pick").Value) * 1));
+                        int IncDisco = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name == "IncDisco").Value) * 100));
+
+
+                        //Si hay resultados a enviar
+                        if (PMCount > 0 || PMCountAux > 0)
+                        {
+                            // Valor por defecto deja pasar
+                            resultContainer.ToolResultConstant = BcnResultConstants.Accept;
+
+                            Udp.Write("X_Pick", X_Pick.ToString());
+                            Udp.Write("Y_Pick", Y_Pick.ToString());
+                            Udp.Write("Z_Pick", Z_Pick.ToString());
+                            Udp.Write("Inclinacion_Pick", IncDisco.ToString());
+                            Udp.Write("NoPartFound_Pick", "0");
+
+
+                        }
+                        else //Si no hay resultados tras la inspección
+                        {
+                            if (isEmpty == 1)
+                            {
+                                // Valor por defecto deja pasar
+                                resultContainer.ToolResultConstant = BcnResultConstants.Accept;
+                                Udp.Write("NoPartFound_Pick", "1");
+                            }
+                            else
+                            {
+                                // Valor por defecto deja pasar
+                                resultContainer.ToolResultConstant = BcnResultConstants.Reject;
+                                Udp.Write("NoPartFound_Pick", "0");
+                            }
+
+                            Udp.Write("X_Pick", "0");
+                            Udp.Write("Y_Pick", "0");
+                            Udp.Write("Z_Pick", "0");
+                            Udp.Write("Inclinacion_Pick", "0");
+
+                        }
+
+                        Udp.Write("InspectionCompleteCustom_02", "1");
+
+                        if (resultContainer.ToolResultConstant == BcnResultConstants.Accept)
+                        {
+                            Udp.Write("OkC_02", "1");
+                            Udp.Write("NokC_02", "0");
+
+                        }
+                        else
+                        {
+                            Udp.Write("OkC_02", "0");
+                            Udp.Write("NokC_02", "1");
+
+                        }
+
+                        //Guardar imágen en F del Mini
+
+                        DirectoryInfo inf = new DirectoryInfo("K:");
+                        DirectoryInfo[] infDirs = inf.GetDirectories();
+
+                        for (int i = 0; i < infDirs.Length; i++)
+                        {
+                            if (infDirs[i].Name == "PhotoneoL1")
+                            {
+                                //Se crea un bmp mediante el contenido del subrecord
+                                VSCogRecord[0].Subject = imageContainer.Record as ICogRecord;
+                                VSCogRecord[0].Display.CreateContentBitmap(Cognex.VisionPro.Display.CogDisplayContentBitmapConstants.Image).Save(Path.Combine(rutaFFolderPhotoneo, TCPCommsImageName), System.Drawing.Imaging.ImageFormat.Bmp);
+
+                            }
+                        }
+
+                    }
+                    else if (Index == 0) //CamFijaL1
+                    {
+
+                        int X_00 = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name.Contains("X_")).Value) * 10));
+                        int Y_00 = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name.Contains("Y_")).Value) * 10));
+                        int Angle_00 = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name == "Angle").Value) * 10));
+
+                        Udp.Write("X_00", X_00.ToString());
+                        Udp.Write("Y_00", Y_00.ToString());
+                        Udp.Write("Angulo_00", Angle_00.ToString());
+
+                        Udp.Write("InspectionCompleteCustom_00", "1");
+
+                        if (resultContainer.ToolResultConstant == BcnResultConstants.Accept)
+                        {
+                            Udp.Write("OkC_00", "1");
+                            Udp.Write("NokC_00", "0");
+
+                        }
+                        else
+                        {
+                            Udp.Write("OkC_00", "0");
+                            Udp.Write("NokC_00", "1");
+
+                        }
+
+                        //Guardar imágen en F del Mini
+
+                        DirectoryInfo inf = new DirectoryInfo("I:");
+                        DirectoryInfo[] infDirs = inf.GetDirectories();
+
+                        for (int i = 0; i < infDirs.Length; i++)
+                        {
+                            if (infDirs[i].Name == "CamFijaL1")
+                            {
+                                //Se crea un bmp mediante el contenido del subrecord
+                                VSCogRecord[0].Subject = imageContainer.Record as ICogRecord;
+                                VSCogRecord[0].Display.CreateContentBitmap(Cognex.VisionPro.Display.CogDisplayContentBitmapConstants.Image).Save(Path.Combine(rutaFFolderFija, TCPCommsImageName), System.Drawing.Imaging.ImageFormat.Bmp);
+
+                            }
+                        }
+
+
+
+                    }
+                    else if (Index == 1) //CamRobotL1
+                    {
+
+                        int X_01 = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name.Contains("X_")).Value) * 10));
+                        int Y_01 = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name.Contains("Y_")).Value) * 10));
+                        int Angle_01 = (short)Math.Truncate((Convert.ToDouble(resultContainer.ToolBlockOutputs.Find(x => x.Name == "Angle").Value) * 10));
+                                               
+                        Udp.Write("X_01", X_01.ToString());
+                        Udp.Write("Y_01", Y_01.ToString());
+                        Udp.Write("Angulo_01", Angle_01.ToString());
+
+                        Udp.Write("InspectionCompleteCustom_01", "1");
+
+                        if(resultContainer.ToolResultConstant == BcnResultConstants.Accept)
+                        {
+                            Udp.Write("OkC_01", "1");
+                            Udp.Write("NokC_01", "0");
+
+                        }
+                        else
+                        {
+                            Udp.Write("OkC_01", "0");
+                            Udp.Write("NokC_01", "1");
+
+                        }
+
+
+
+                        //Guardar imágen en F del Mini
+
+                        DirectoryInfo inf = new DirectoryInfo("I:");
+                        DirectoryInfo[] infDirs = inf.GetDirectories();
+
+                        for (int i = 0; i < infDirs.Length; i++)
+                        {
+                            if (infDirs[i].Name == "CamRobotL1")
+                            {
+                                //Se crea un bmp mediante el contenido del subrecord
+                                VSCogRecord[0].Subject = imageContainer.Record as ICogRecord;
+                                VSCogRecord[0].Display.CreateContentBitmap(Cognex.VisionPro.Display.CogDisplayContentBitmapConstants.Image).Save(Path.Combine(rutaFFolderRobot, TCPCommsImageName), System.Drawing.Imaging.ImageFormat.Bmp);
+
+                            }
+                        }
+                    }
+
+                    //Guardamos los resultados para cuando el mini los consulte
+                    lastResults[Index] = (resultContainer.ToolResultConstant == BcnResultConstants.Accept) ? "1" : "0";
+                    lastResultsImgNames[Index] = TCPCommsImageName;
+
+                    //Serializmos los resultados
+                    BcnImageContainer.Serialize(ResultPath, imageContainer);
+                    BcnResultContainer.Serialize(ResultPath, resultContainer);
+
+                }
+                catch (Exception ex)
+                {
+
+                    logger.Error(ex);
+
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Metodo para cargar la receteca para el analisis general de resultado
+        /// </summary>
+        /// <param name="RecipeLoaded"></param>
+        public override Task OnLoadRecipe(string RecipeLoaded)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    
+
+
+
+                }
+                catch (Exception ex)
+                {
+
+                    logger.Error(ex);
+
+                }
+            });
+        }
+
+        public override void Notify(string Tag, string Value)
+        {
+
+        }
+        
+        #endregion
+
+        #region Events
+        /// <summary>
+        /// Evento nuevo mensaje por udp
+        /// </summary>
+        /// <param name="Tag">Nombre de la tag</param>
+        /// <param name="Value">Valor</param>
+        public override void Coms_OnValueChanged(string Tag, string Value)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    //Separamos el mensaje por interrogantes
+                    string[] splitValue = Value.Split('?');
+
+                    //Carga de receta por Vision System customizada
+                    if (Tag.Contains("LoadRecipeBit") && (Value == "1"))
+                    {
+                        //lock (RecipeObject)
+                        //{
+                            
+                            // Id del vision system
+                            string ID = Tag.Replace("LoadRecipeBit_", "");
+
+                            if(recipes[Convert.ToInt32(ID)] != "Error")
+                            {
+                                // Señales
+                                Udp.Write("RecipeOk_" + ID, "0");
+                                Udp.Write("RecipeNok_" + ID, "0");
+                                Udp.Write("LoadingRecipe_" + ID, "1");
+
+                                //Lanzamos carga real de la receta con Cortex
+                                Udp.Write("LoadRecipe_" + ID, recipes[Convert.ToInt32(ID)]);
+
+                                // Set de que se esta cargando la receta
+                                WaitingRecipeAck[Convert.ToInt32(ID)] = true;
+
+                                // Esperamos a recibir el ack de que la receta esta cargada
+                                for (int i = 0; i < LoadRecipeTimeOut; i++)
+                                {
+                                    System.Threading.Thread.Sleep(1000);
+
+                                    if (!WaitingRecipeAck[Convert.ToInt32(ID)]) break;
+                                }
+
+                                //Si hemos encontrado un programa valido
+                                if (WaitingRecipeAck[Convert.ToInt32(ID)] == false)
+                                {
+
+                                    Udp.Write("RecipeOk_" + ID, "1");
+                                    Udp.Write("RecipeNok_" + ID, "0");
+                                    Udp.Write("LoadingRecipe_" + ID, "0");
+
+                                    //int longitud = 15 - recipes[Convert.ToInt32(ID)].Length;
+                                    //receta =
+
+                                    //Udp.Write("CurrentRecipeID_" + ID, "");
+                                    Udp.Write("CurrentRecipeID_" + ID, recipes[Convert.ToInt32(ID)]);
+
+                                    logger.Info("Receta cargada en cam " + ID + ": " + recipes[Convert.ToInt32(ID)]);
+
+                                    //if(ID=="00")
+                                    //UpdateRecetas();
+
+
+                                if(Convert.ToInt32(ID) < 2)
+                                {
+                                    string res = "Recipe_" + ID + "|" + recipes[Convert.ToInt32(ID)];
+                                    //res = res.PadRight(29, ' ');
+                                    //TCPServer_2D[Convert.ToInt32(ID)].BroadcastLine(res);
+                                }
+                                else
+                                {
+                                    string res = "Recipe_" + ID + "|" + recipes[Convert.ToInt32(ID)];
+                                    //res = res.PadRight(29, ' ');
+                                    //TCPServer_3D[0].BroadcastLine(res);
+
+                                }
+                                    
+                                }
+                                else
+                                {
+                                    //recipes[Convert.ToInt32(ID)] = "Error";
+
+                                    Udp.Write("RecipeOk_" + ID, "0");
+                                    Udp.Write("RecipeNok_" + ID, "1");
+                                    Udp.Write("LoadingRecipe_" + ID, "0");
+                                    Udp.Write("CurrentRecipeID_" + ID, "Error");
+
+                                    logger.Error("Receta fallida en cam " + ID + ": " + recipes[Convert.ToInt32(ID)]);
+                                }
+                            //}                            
+                        }                        
+                    }
+                    else if (Tag.Contains("LoadRecipeCompleted"))
+                    {
+
+                        WaitingRecipeAck[Convert.ToInt32(Tag.Replace("LoadRecipeCompleted_",""))] = false;
+                        //loadedRecipes = 
+                    }
+
+                    switch (Tag)
+                    {
+                        case "Trigger_00":
+
+                            if (Value == "1")
+                            {
+                                Udp.Write("InspectionCompleteCustom_00", "0");
+                                logger.Info("Trigger en la cámara 1.");
+                            }
+
+                            break;
+
+                        case "Trigger_01":
+
+                            if (Value == "1")
+                            {
+                                Udp.Write("InspectionCompleteCustom_01", "0");
+                                logger.Info("Trigger en la cámara 2.");
+                            }
+
+                            break;
+
+                        case "Trigger_02":
+
+                            if (Value == "1")
+                            {
+                                Udp.Write("InspectionCompleteCustom_02", "0");
+                                logger.Info("Trigger en la cámara 3.");
+                            }
+
+                            break;
+
+                        case "RecipeID_00":
+
+                            recipes[0] = Value.Split('/')[0];
+                            logger.Info("Receta Recibida Cam Fija L1: " + recipes[0]);
+
+                            break;
+
+                        case "RecipeID_01":
+
+                            recipes[1] = Value.Split('/')[0];
+                            logger.Info("Receta Recibida Cam Robot L1: " + recipes[1]);
+
+                            break;
+
+                        case "RecipeID_02":
+
+                            recipes[2] = Value.Split('/')[0];
+                            logger.Info("Receta Recibida Photoneo L1: " + recipes[2]);
+
+                            break;
+
+                        case "SystemReady" :
+
+                            if(Value == "0")
+                            {
+                                Udp.Write("SystemReadyCustom", "0");
+                            }
+
+                            break;
+
+                        default:
+
+                            break;
+
+
+                    }
+                                        
+
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex);
+                }
+            });
+        }
+        
+        public void UpdateRecetas()
+        {
+            Udp.Write("LoadRecipeBit_01", "1");
+            Udp.Write("LoadRecipeBit_02", "1");
+            Udp.Write("LoadRecipeBit_01", "0");
+            Udp.Write("LoadRecipeBit_02", "0");
+        }
+
+        #endregion
+        
+        #region Serialization 2D
+
+        public class XML_Management
+        {
+            #region CONSTRUCTOR
+            public XML_Management()
+            {
+
+            }
+
+            #endregion
+
+            #region READ METHODS
+
+            public static Parameters ReadConfig(string file_combined)
+            {
+                //Objeto de la clase Folder
+                Parameters conf = new Parameters();
+
+                //Stream reader
+                using (StreamReader sr = new StreamReader(file_combined))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(Parameters));
+
+                    conf = (Parameters)serializer.Deserialize(sr);
+
+                    sr.Close();
+                }
+
+                return conf;
+            }
+
+
+            #endregion
+
+            #region WRITE METHODS
+
+            public static void WriteConfig(string file_combined, Parameters config)
+            {
+                using (StreamWriter sr = new StreamWriter(file_combined))
+                {
+                    XmlSerializer xSerializer = new XmlSerializer(typeof(Parameters));
+                    Parameters c = new Parameters();
+                    c = config;
+
+                    xSerializer.Serialize(sr, (Parameters)c);
+                    sr.Close();
+                }
+            }
+
+            #endregion
+
+        }
+
+
+        //Clase serializable
+        [Serializable()]
+        [XmlRoot("VPP_Params", Namespace = "", IsNullable = false)]
+        public class Parameters
+        {
+            public string CenterXTrainPrincipal { get; set; }
+            public string CenterYTrainPrincipal { get; set; }
+            public string SideXLengthPrincipal { get; set; }
+            public string SideYLengthPrincipal { get; set; }
+            public string RotationPrincipal { get; set; }
+            public string SkewPrincipal { get; set; }
+
+            public string CenterXTrainAuxiliar1 { get; set; }
+            public string CenterYTrainAuxiliar1 { get; set; }
+            public string SideXLengthTrainAuxiliar1 { get; set; }
+            public string SideYLengthTrainAuxiliar1 { get; set; }
+            public string RotationTrainAuxiliar1 { get; set; }
+            public string SkewTrainAuxiliar1 { get; set; }
+
+            public string CenterXSearchAuxiliar1 { get; set; }
+            public string CenterYSearchAuxiliar1 { get; set; }
+            public string SideXLengthSearchAuxiliar1 { get; set; }
+            public string SideYLengthSearchAuxiliar1 { get; set; }
+            public string RotationSearchAuxiliar1 { get; set; }
+            public string SkewSearchAuxiliar1 { get; set; }
+
+            public string CenterXTrainAuxiliar2 { get; set; }
+            public string CenterYTrainAuxiliar2 { get; set; }
+            public string SideXLengthTrainAuxiliar2 { get; set; }
+            public string SideYLengthTrainAuxiliar2 { get; set; }
+            public string RotationTrainAuxiliar2 { get; set; }
+            public string SkewTrainAuxiliar2 { get; set; }
+
+            public string CenterXSearchAuxiliar2 { get; set; }
+            public string CenterYSearchAuxiliar2 { get; set; }
+            public string SideXLengthSearchAuxiliar2 { get; set; }
+            public string SideYLengthSearchAuxiliar2 { get; set; }
+            public string RotationSearchAuxiliar2 { get; set; }
+            public string SkewSearchAuxiliar2 { get; set; }
+
+            public string RetrainPrincipal { get; set; }
+
+            public string RetrainAuxiliar1 { get; set; }
+
+            public string RetrainAuxiliar2 { get; set; }
+        }
+
+
+
+        #endregion
+        
+        #region Serialization 3D
+
+        public class XML_Management3D
+        {
+            #region CONSTRUCTOR
+            public XML_Management3D()
+            {
+
+            }
+
+            #endregion
+
+            #region READ METHODS
+
+            public static Parameters3D ReadConfig(string file_combined)
+            {
+                //Objeto de la clase Folder
+                Parameters3D conf = new Parameters3D();
+
+                //Stream reader
+                using (StreamReader sr = new StreamReader(file_combined))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(Parameters3D));
+
+                    conf = (Parameters3D)serializer.Deserialize(sr);
+
+                    sr.Close();
+                }
+
+                return conf;
+            }
+
+
+            #endregion
+
+            #region WRITE METHODS
+
+            public static void WriteConfig(string file_combined, Parameters3D config)
+            {
+                using (StreamWriter sr = new StreamWriter(file_combined))
+                {
+                    XmlSerializer xSerializer = new XmlSerializer(typeof(Parameters3D));
+                    Parameters3D c = new Parameters3D();
+                    c = config;
+
+                    xSerializer.Serialize(sr, (Parameters3D)c);
+                    sr.Close();
+                }
+            }
+
+            #endregion
+
+        }
+
+
+        //Clase serializable
+        [Serializable()]
+        [XmlRoot("VPP_Params", Namespace = "", IsNullable = false)]
+        public class Parameters3D
+        {
+
+            public string CenterXTrainPrincipal { get; set; }
+            public string CenterYTrainPrincipal { get; set; }
+            public string SideXLengthTrainPrincipal { get; set; }
+            public string SideYLengthTrainPrincipal { get; set; }
+            public string RotationTrainPrincipal { get; set; }
+            public string SkewTrainPrincipal { get; set; }
+
+            public string CenterXSearchPrincipal { get; set; }
+            public string CenterYSearchPrincipal { get; set; }
+            public string SideXLengthSearchPrincipal { get; set; }
+            public string SideYLengthSearchPrincipal { get; set; }
+            public string RotationSearchPrincipal { get; set; }
+            public string SkewSearchPrincipal { get; set; }
+
+            public string CenterXTrainSecundario { get; set; }
+            public string CenterYTrainSecundario { get; set; }
+            public string SideXLengthTrainSecundario { get; set; }
+            public string SideYLengthTrainSecundario { get; set; }
+            public string RotationTrainSecundario { get; set; }
+            public string SkewTrainSecundario { get; set; }
+
+            public string CenterXSearchSecundario { get; set; }
+            public string CenterYSearchSecundario { get; set; }
+            public string SideXLengthSearchSecundario { get; set; }
+            public string SideYLengthSearchSecundario { get; set; }
+            public string RotationSearchSecundario { get; set; }
+            public string SkewSearchSecundario { get; set; }
+
+            public string RetrainPrincipal { get; set; }
+
+            public string RetrainSecundario { get; set; }
+
+        }
+                     
+        #endregion
+               
+    }
+
+Fin de los ejemplos.
+
+Bien, ahora quiero hacer te la siguiente pregunta, y quiero que me ayudes generando código similar al que te he enseñado. 
+
+La pregunta es: Puedes recoger los resultados de un vidi que tiene dos Tools de tipo Red llamadas AnalyzeDefectos y AnalyzeMascara, enviar el número total de defectos y pintar la máscara como un gráfico amarillo?

@@ -1,0 +1,19 @@
+
+PROMPT ENGINEERING
+
+Preparar el prompt para la tarea específica que quieres hacer.
+
+
+EJEMPLOS
+
+Cómo recibo 3 valores double llamados Tolerancia 1, 2 y 3 y los envío como VisionPro Inputs al sistema 1, 2 y 3?
+
+
+Cómo creo una lista de array de bytes y la relleno con tres arrays vacíos de ejemplo?
+
+
+Cómo creas un objeto Vidi?
+Como rellenas una lista de Workspaces con los archivos de un path dado?
+
+
+Cómo creas y lo rellenas con un botón en cada celda?

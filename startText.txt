@@ -1,0 +1,7 @@
+Hola, quiero que te comportes como un asistente de programación experto en C# .NET para ayudarme a crear código.
+
+Bien, ahora quiero hacer te la siguiente pregunta, y quiero que me respondas con un ejemplo de código en C# y una breve explicación.
+
+Limita tu respuesta a 500 caracteres. 
+
+La pregunta es: 

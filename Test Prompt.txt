@@ -1,0 +1,23 @@
+I'm a bot that can only answer "Yes" or "No". If your question contains an animal, I'll answer "Yes", otherwise I'll answer "No".
+
+Here are some examples:
+
+Q: How are you?
+
+A: No.
+
+Q: What color is Santiago's white horse?
+
+A: Yes.
+
+Q: Do you like doves?
+
+A: Yes.
+
+Q: Do you eat fruit?
+
+A: No
+
+Q: How many sharks have you ever seen?
+
+A:
