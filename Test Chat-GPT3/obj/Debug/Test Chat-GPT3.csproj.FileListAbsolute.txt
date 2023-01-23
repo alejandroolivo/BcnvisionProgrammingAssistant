@@ -23,3 +23,28 @@ H:\Dev\OpenAI\Test\Test Chat-GPT3\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj
 H:\Dev\OpenAI\Test\Test Chat-GPT3\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.CopyComplete
 H:\Dev\OpenAI\Test\Test Chat-GPT3\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.exe
 H:\Dev\OpenAI\Test\Test Chat-GPT3\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.pdb
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\Test Chat-GPT3.exe.config
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\Test Chat-GPT3.exe
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\Test Chat-GPT3.pdb
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\Newtonsoft.Json.dll
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\OpenAI_API.dll
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\System.Threading.Tasks.Extensions.dll
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\Newtonsoft.Json.xml
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\bin\Debug\System.Threading.Tasks.Extensions.xml
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csprojAssemblyReference.cache
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\MainWindow.g.cs
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\App.g.cs
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3_MarkupCompile.cache
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3_MarkupCompile.lref
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\MainWindow.baml
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.g.resources
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test_Chat_GPT3.Properties.Resources.resources
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.GenerateResource.cache
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.CoreCompileInputs.cache
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.CopyComplete
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.exe
+H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.pdb

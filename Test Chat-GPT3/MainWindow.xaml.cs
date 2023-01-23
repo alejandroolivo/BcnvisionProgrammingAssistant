@@ -29,7 +29,7 @@ namespace Test_Chat_GPT3
         #region CONSTS
 
         // Replace YOUR_API_KEY with your actual API key
-        private const string API_KEY = /**/"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";
+        private const string API_KEY = /**/"YOUR-KEY";
         // Replace YOUR_MODEL with the name of the model you want to use (e.g. "text-davinci-002")
         private const string MODEL = "text-davinci-003";
 
@@ -124,29 +124,35 @@ namespace Test_Chat_GPT3
                 //data.LoadPrompt(filePath);
                 if (cmbTopics.SelectedItem.ToString() == "Vision Pro Inputs")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\Coms_OnValueChanged Prompt.txt";
+                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Coms_OnValueChanged Prompt.txt";
                     maxTokensAnswer = 300;
                 }
                 else if (cmbTopics.SelectedItem.ToString() == "Vidi")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\Vidi Prompt.txt";
+                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Vidi Prompt.txt";
                     maxTokensAnswer = 200;
                 }
                 else if (cmbTopics.SelectedItem.ToString() == "C#")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\startText.txt";
+                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\startText.txt";
                     maxTokensAnswer = 200;
                 }
                 else if (cmbTopics.SelectedItem.ToString() == "Vista Personalizada")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\WPF Prompt.txt";
+                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\WPF Prompt.txt";
+                    maxTokensAnswer = 200;
+                }
+                else if (cmbTopics.SelectedItem.ToString() == "Email Teknics")
+                {
+                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\TK Prompt.txt";
                     maxTokensAnswer = 200;
                 }
                 else
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\startText.txt";
+                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\startText.txt";
                     maxTokensAnswer = 200;
                 }
+                
                 //string filePath2 = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\Test Prompt.txt";
 
                 // Lee el contenido del archivo y lo guarda en una variable de tipo string
@@ -175,7 +181,7 @@ namespace Test_Chat_GPT3
         {
             try
             {
-                List<string> topicsList = new List<string>() { "Vidi", "Vision Pro Inputs", "Outputs Vision Pro", "Comunicación", "Vista Personalizada", "C#" };
+                List<string> topicsList = new List<string>() { "Vidi", "Vision Pro Inputs", "Outputs Vision Pro", "Comunicación", "Vista Personalizada", "C#", "Email Teknics" };
 
                 foreach (string topic in topicsList) { cmbTopics.Items.Add(topic); }
 
