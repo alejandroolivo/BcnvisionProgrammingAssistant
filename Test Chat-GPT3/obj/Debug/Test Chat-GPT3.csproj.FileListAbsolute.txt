@@ -48,3 +48,28 @@ H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\o
 H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.CopyComplete
 H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.exe
 H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.pdb
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\Test Chat-GPT3.exe.config
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\Test Chat-GPT3.exe
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\Test Chat-GPT3.pdb
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\Newtonsoft.Json.dll
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\OpenAI_API.dll
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\System.Threading.Tasks.Extensions.dll
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\Newtonsoft.Json.xml
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\bin\Debug\System.Threading.Tasks.Extensions.xml
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csprojAssemblyReference.cache
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\MainWindow.g.cs
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\App.g.cs
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3_MarkupCompile.cache
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3_MarkupCompile.lref
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\MainWindow.baml
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.g.resources
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test_Chat_GPT3.Properties.Resources.resources
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.GenerateResource.cache
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.CoreCompileInputs.cache
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.csproj.CopyComplete
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.exe
+H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Test Chat-GPT3\obj\Debug\Test Chat-GPT3.pdb

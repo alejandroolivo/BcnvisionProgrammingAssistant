@@ -29,9 +29,11 @@ namespace Test_Chat_GPT3
         #region CONSTS
 
         // Replace YOUR_API_KEY with your actual API key
-        private const string API_KEY = /**/"YOUR-KEY";
+        private const string API_KEY = "YOUR_KEY";
         // Replace YOUR_MODEL with the name of the model you want to use (e.g. "text-davinci-002")
         private const string MODEL = "text-davinci-003";
+        // Replace with your Path
+        private string START_PATH = @"H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main";
 
         #endregion
 
@@ -124,32 +126,32 @@ namespace Test_Chat_GPT3
                 //data.LoadPrompt(filePath);
                 if (cmbTopics.SelectedItem.ToString() == "Vision Pro Inputs")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Coms_OnValueChanged Prompt.txt";
+                    filePath = @"H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Coms_OnValueChanged Prompt.txt";
                     maxTokensAnswer = 300;
                 }
                 else if (cmbTopics.SelectedItem.ToString() == "Vidi")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\Vidi Prompt.txt";
+                    filePath = @"H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\Vidi Prompt.txt";
                     maxTokensAnswer = 200;
                 }
                 else if (cmbTopics.SelectedItem.ToString() == "C#")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\startText.txt";
+                    filePath = @"H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\startText.txt";
                     maxTokensAnswer = 200;
                 }
                 else if (cmbTopics.SelectedItem.ToString() == "Vista Personalizada")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\WPF Prompt.txt";
+                    filePath = @"H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\WPF Prompt.txt";
                     maxTokensAnswer = 200;
                 }
                 else if (cmbTopics.SelectedItem.ToString() == "Email Teknics")
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\TK Prompt.txt";
+                    filePath = @"H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\TK Prompt.txt";
                     maxTokensAnswer = 200;
                 }
                 else
                 {
-                    filePath = @"H:\Dev\OpenAI\Test\Test Chat-GPT3\BcnvisionProgrammingAssistant\startText.txt";
+                    filePath = @"H:\4. Trabajo\IDi\BcnvisionProgrammingAssistant-main\startText.txt";
                     maxTokensAnswer = 200;
                 }
                 
@@ -167,7 +169,7 @@ namespace Test_Chat_GPT3
 
                 //txtAnswer.Text += res.ToString();
                 await api.Completions.StreamCompletionAsync(
-                    new CompletionRequest(texto + " " + txtQuestion.Text, maxTokensAnswer, 0, presencePenalty: 0, frequencyPenalty: 0, numOutputs: 1, echo: false, stopSequences: stopSeq),
+                    new CompletionRequest(texto + " " + txtQuestion.Text, maxTokensAnswer, 0, presencePenalty: 0, frequencyPenalty: 0, numOutputs: 1, echo: true, stopSequences: stopSeq),
                     res => txtAnswer.Text += res.ToString());
 
             }

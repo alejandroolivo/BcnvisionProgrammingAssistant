@@ -17,3 +17,13 @@ Como rellenas una lista de Workspaces con los archivos de un path dado?
 
 
 Cómo creas y lo rellenas con un botón en cada celda?
+
+Envía un email a Santi de Gracia para que continuen los avances de programación de PLC y se calle de una vez.
+
+
+((CogToolBlock) mToolBlock).Outputs["Tratamiento"].Value = true;
+    if ((Mean_Der < Mean_Threshold) || (Desviation_Der > Des_Threshold)){
+      ((CogToolBlock) mToolBlock).Outputs["Tratamiento"].Value = false;
+    }else if ((Mean_Izq < Mean_Threshold) || (Desviation_Izq > Des_Threshold)){
+      ((CogToolBlock) mToolBlock).Outputs["Tratamiento"].Value = false;
+    }
